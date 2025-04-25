@@ -52,14 +52,14 @@ pub fn get_keys(key64: &str) -> Result<Vec<Vec<u8>>> {
     let aes_key = Key::<Aes256Gcm>::from_slice(aes_key);
     let cipher = Aes256Gcm::new(aes_key);
     if let Ok(plain) = cipher.decrypt(nonce, ciphertext) {
-      keys.push(plain)
+      keys.push(plain);
     }
   } else if flag == 2 {
     let chacha_key = b"\xE9\x8F\x37\xD7\xF4\xE1\xFA\x43\x3D\x19\x30\x4D\xC2\x25\x80\x42\x09\x0E\x2D\x1D\x7E\xEA\x76\x70\xD4\x1F\x73\x8D\x08\x72\x96\x60";
     let chacha_key = Key::<ChaCha20Poly1305>::from_slice(chacha_key);
     let cipher = ChaCha20Poly1305::new(chacha_key);
     if let Ok(plain) = cipher.decrypt(nonce, ciphertext) {
-      keys.push(plain)
+      keys.push(plain);
     }
   }
 
