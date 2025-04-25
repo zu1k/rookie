@@ -3,12 +3,13 @@ See https://github.com/runassu/chrome_v20_decryption/blob/main/decrypt_chrome_v2
 cargo build --release --features appbound
 */
 use base64::{prelude::BASE64_STANDARD, Engine};
-use eyre::{bail, eyre, Result};
+use eyre::{bail, Result};
 
 use aes_gcm::{
   aead::{generic_array::GenericArray, Aead, KeyInit},
   Aes256Gcm, Key,
 };
+use chacha20poly1305::ChaCha20Poly1305;
 
 mod impersonate;
 
@@ -42,19 +43,24 @@ pub fn get_keys(key64: &str) -> Result<Vec<Vec<u8>>> {
 
   // Chrome also decrypt the decrypted key with hardcoded AES key from elevation_service.exe
   let decrypted_key = &key[key.len() - 61..];
-  let aes_key = BASE64_STANDARD.decode("sxxuJBrIRnKNqcH6xJNmUc/7lE0UOrgWJ2vMbaAoR4c=")?;
+  let flag = decrypted_key[0];
   let iv = &decrypted_key[1..1 + 12];
-  let mut ciphertext = decrypted_key[1 + 12..1 + 12 + 32].to_vec();
-  let tag = &decrypted_key[1 + 12 + 32..];
-  ciphertext.extend(tag);
-  let aes_key = Key::<Aes256Gcm>::from_slice(&aes_key);
-  let cipher = Aes256Gcm::new(aes_key);
+  let ciphertext = &decrypted_key[1 + 12..];
   let nonce = GenericArray::from_slice(iv); // 96-bits; unique per message
-  if let Ok(plain) = cipher
-    .decrypt(nonce, ciphertext.as_slice())
-    .map_err(|e| eyre!("{:?}", e))
-  {
-    keys.push(plain)
+  if flag == 1 {
+    let aes_key = b"\xB3\x1C\x6E\x24\x1A\xC8\x46\x72\x8D\xA9\xC1\xFA\xC4\x93\x66\x51\xCF\xFB\x94\x4D\x14\x3A\xB8\x16\x27\x6B\xCC\x6D\xA0\x28\x47\x87";
+    let aes_key = Key::<Aes256Gcm>::from_slice(aes_key);
+    let cipher = Aes256Gcm::new(aes_key);
+    if let Ok(plain) = cipher.decrypt(nonce, ciphertext) {
+      keys.push(plain)
+    }
+  } else if flag == 2 {
+    let chacha_key = b"\xE9\x8F\x37\xD7\xF4\xE1\xFA\x43\x3D\x19\x30\x4D\xC2\x25\x80\x42\x09\x0E\x2D\x1D\x7E\xEA\x76\x70\xD4\x1F\x73\x8D\x08\x72\x96\x60";
+    let chacha_key = Key::<ChaCha20Poly1305>::from_slice(chacha_key);
+    let cipher = ChaCha20Poly1305::new(chacha_key);
+    if let Ok(plain) = cipher.decrypt(nonce, ciphertext) {
+      keys.push(plain)
+    }
   }
 
   Ok(keys)
