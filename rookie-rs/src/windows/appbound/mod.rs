@@ -13,7 +13,7 @@ use chacha20poly1305::ChaCha20Poly1305;
 
 mod impersonate;
 
-fn decrypt(key: &mut [u8], as_system: bool) -> Result<Vec<u8>> {
+fn decrypt_dpapi(key: &[u8], as_system: bool) -> Result<Vec<u8>> {
   let mut handle = None;
   if as_system {
     handle = Some(impersonate::start_impersonate()?);
@@ -32,10 +32,8 @@ pub fn get_keys(key64: &str) -> Result<Vec<Vec<u8>>> {
   if !key_u8.starts_with(b"APPB") {
     bail!("key not starts with APPB")
   }
-  let key_u8 = &key_u8[4..];
-  let key64 = BASE64_STANDARD.encode(key_u8);
-  let mut system_decrypted = decrypt(&mut BASE64_STANDARD.decode(key64)?, true)?;
-  let user_decrypted = decrypt(&mut system_decrypted, false)?;
+  let system_decrypted = decrypt_dpapi(&key_u8[4..], true)?;
+  let user_decrypted = decrypt_dpapi(&system_decrypted, false)?;
   let key = &user_decrypted[user_decrypted.len() - 61..];
 
   // Most chrome browsers can use the system->user decrypted key directly (last 32 bytes)
