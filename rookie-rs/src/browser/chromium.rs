@@ -206,7 +206,7 @@ fn decrypt_encrypted_value(
 fn decrypt_encrypted_value(
   value: String,
   encrypted_value: &[u8],
-  keys: Vec<Vec<u8>>,
+  keys: &Vec<Vec<u8>>,
 ) -> Result<String> {
   // cbc
   if !value.is_empty() {
@@ -232,7 +232,7 @@ fn decrypt_encrypted_value(
   let encrypted_value = &mut encrypted_value.to_owned()[3..];
   let iv: [u8; 16] = [b' '; 16];
 
-  for key in &keys {
+  for key in keys {
     let mut key_array: [u8; 16] = [0; 16];
     key_array.copy_from_slice(&key[..16]);
     let cipher = Aes128CbcDec::new(&key_array.into(), &iv.into());
